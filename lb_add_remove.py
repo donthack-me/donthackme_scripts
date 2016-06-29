@@ -20,8 +20,8 @@ import argparse
 parser = argparse.ArgumentParser(description='Add or remove nodes from lb.')
 parser.add_argument('--loadbalancer', '-l', dest='loadbalancer', required=True,
                     help='loadbalancer to edit.')
-parser.add_argument('--instance_uuid', '-i', dest="instance", required=True,
-                    help='instance_uuid to add.')
+parser.add_argument('--ip_address', '-i', dest="ip", required=True,
+                    help='ip address to add.')
 parser.add_argument('--region', '-r', dest="region", required=True,
                     help='The rackspace region for the the request.')
 parser.add_argument('--username', '-u', dest="username", required=True,
@@ -40,16 +40,12 @@ pyrax.set_credentials(
 )
 
 clb = pyrax.connect_to_cloud_loadbalancers(args.region.upper())
-cs = pyrax.connect_to_cloudservers(args.region.upper())
-
-server = cs.servers.get(args.instance)
-servicenet_ip = server.networks["private"][0]
 
 lb = clb.get(args.loadbalancer)
 if args.remove:
     try:
         node = [node for node in lb.nodes
-                if node.address == server.networks["private"][0]][0]
+                if node.address == args.ip]
         node.delete()
     except Exception as e:
         msg = "Failed to remove instance {0} from LB {1}: {2}"
@@ -59,10 +55,10 @@ else:
     try:
         lb.add_nodes(
             [
-                clb.Node(address=servicenet_ip, port=443, condition="ENABLED")
+                clb.Node(address=args.ip, port=443, condition="ENABLED")
             ]
         )
     except Exception as e:
         msg = "Failed to add instance {0} to LB {1}: {2}"
-        print(msg.format(args.instance, args.loadbalancer, e))
+        print(msg.format(args.ip, args.loadbalancer, e))
         sys.exit(1)
